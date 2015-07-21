@@ -105,7 +105,7 @@ class CRM_Financial_BAO_FinancialAccount extends CRM_Financial_DAO_FinancialAcco
       CRM_Core_DAO::executeQuery($query, $queryParams);
     }
 
-  public static function add(&$params, &$ids = array()) {
+  public static function pay(&$params, &$ids = array()) {
     if (empty($params['id'])) {
       $params['is_active'] = CRM_Utils_Array::value('is_active', $params, FALSE);
       $params['is_deductible'] = CRM_Utils_Array::value('is_deductible', $params, FALSE);
