@@ -129,6 +129,63 @@ class CRM_Financial_BAO_FinancialItem extends CRM_Financial_DAO_FinancialItem {
     return self::create($params, NULL, $trxnId);
   }
 
+ public static function pay($lineItem, $contribution, $taxTrxnID = FALSE, $trxnId = NULL) {
+    $contributionStatuses = CRM_Contribute_PseudoConstant::contributionStatus(NULL, 'name');
+    $financialItemStatus = CRM_Core_PseudoConstant::get('CRM_Financial_DAO_FinancialItem', 'status_id');
+    $itemStatus = NULL;
+    if ($contribution->contribution_status_id == array_search('Completed', $contributionStatuses)
+      || $contribution->contribution_status_id == array_search('Pending refund', $contributionStatuses)
+    ) {
+      $itemStatus = array_search('Paid', $financialItemStatus);
+    }
+    elseif ($contribution->contribution_status_id == array_search('Pending', $contributionStatuses)
+      || $contribution->contribution_status_id == array_search('In Progress', $contributionStatuses)
+    ) {
+      $itemStatus = array_search('Unpaid', $financialItemStatus);
+    }
+    elseif ($contribution->contribution_status_id == array_search('Partially paid', $contributionStatuses)) {
+      $itemStatus = array_search('Partially paid', $financialItemStatus);
+    }
+    $params = array(
+      'transaction_date' => CRM_Utils_Date::isoToMysql($contribution->receive_date),
+      'contact_id' => $contribution->contact_id,
+      'amount' => $lineItem->line_total,
+      'currency' => $contribution->currency,
+      'entity_table' => 'civicrm_line_item',
+      'entity_id' => $lineItem->id,
+      'description' => ($lineItem->qty != 1 ? $lineItem->qty . ' of ' : '') . ' ' . $lineItem->label,
+      'status_id' => $itemStatus,
+    );
+
+    if ($taxTrxnID) {
+      $invoiceSettings = CRM_Core_BAO_Setting::getItem(CRM_Core_BAO_Setting::CONTRIBUTE_PREFERENCES_NAME, 'contribution_invoice_settings');
+      $taxTerm = CRM_Utils_Array::value('tax_term', $invoiceSettings);
+      $params['amount'] = $lineItem->tax_amount;
+      $params['description'] = $taxTerm;
+      $accountRel = key(CRM_Core_PseudoConstant::accountOptionValues('account_relationship', NULL, " AND v.name LIKE 'Sales Tax Account is' "));
+    }
+    else {
+      $accountRel = key(CRM_Core_PseudoConstant::accountOptionValues('account_relationship', NULL, " AND v.name LIKE 'Income Account is' "));
+    }
+    if ($lineItem->financial_type_id) {
+      $searchParams = array(
+        'entity_table' => 'civicrm_financial_type',
+        'entity_id' => $lineItem->financial_type_id,
+        'account_relationship' => $accountRel,
+      );
+
+      $result = array();
+      CRM_Financial_BAO_FinancialTypeAccount::retrieve($searchParams, $result);
+      $params['financial_account_id'] = CRM_Utils_Array::value('financial_account_id', $result);
+    }
+    if (empty($trxnId)) {
+      $trxn = CRM_Core_BAO_FinancialTrxn::getFinancialTrxnId($contribution->id, 'ASC', TRUE);
+      $trxnId['id'] = $trxn['financialTrxnId'];
+    }
+
+    return self::create($params, NULL, $trxnId);
+  }
+
   /**
    * Create the financial Items and financial enity trxn.
    *
