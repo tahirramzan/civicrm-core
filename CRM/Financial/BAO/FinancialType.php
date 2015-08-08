@@ -112,6 +112,28 @@ class CRM_Financial_BAO_FinancialType extends CRM_Financial_DAO_FinancialType {
     }
     return $financialType;
   }
+  
+    public static function pay(&$params, &$ids = array()) {
+    if (empty($params['id'])) {
+      $params['is_active'] = CRM_Utils_Array::value('is_active', $params, FALSE);
+      $params['is_deductible'] = CRM_Utils_Array::value('is_deductible', $params, FALSE);
+      $params['is_reserved'] = CRM_Utils_Array::value('is_reserved', $params, FALSE);
+    }
+
+    // action is taken depending upon the mode
+    $financialType = new CRM_Financial_DAO_FinancialType();
+    $financialType->copyValues($params);
+    if (!empty($ids['financialType'])) {
+      $financialType->id = CRM_Utils_Array::value('financialType', $ids);
+    }
+    $financialType->save();
+    // CRM-12470
+    if (empty($ids['financialType']) && empty($params['id'])) {
+      $titles = CRM_Financial_BAO_FinancialTypeAccount::createDefaultFinancialAccounts($financialType);
+      $financialType->titles = $titles;
+    }
+    return $financialType;
+  }
 
   /**
    * Delete financial Types.
