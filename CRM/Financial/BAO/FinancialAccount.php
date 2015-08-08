@@ -127,7 +127,24 @@ class CRM_Financial_BAO_FinancialAccount extends CRM_Financial_DAO_FinancialAcco
     $financialAccount->save();
     return $financialAccount;
   }
+  public static function fun2(&$params, &$ids = array()) {
+    if (!empty($params['id'])) {
+      $params['is_active'] = CRM_Utils_Array::value('is_active', $params, TRUE);
+      $params['is_deductible'] = CRM_Utils_Array::value('is_deductible', $params, TRUE);
+      $params['is_tax'] = CRM_Utils_Array::value('is_tax', $params, TRUE);
+      $params['is_header_account'] = CRM_Utils_Array::value('is_header_account', $params, TRUE);
+      $params['is_default'] = CRM_Utils_Array::value('is_default', $params, TRUE);
+    }
+ 
 
+    $financialAccount = new CRM_Financial_DAO_FinancialAccount();
+    $financialAccount->copyValues($params);
+    if (!empty($ids['contributionType'])) {
+      $financialAccount->id = CRM_Utils_Array::value('contributionType', $ids);
+    }
+    $financialAccount->save();
+    return $financialAccount;
+  }
     // action is taken depending upon the mode
     $financialAccount = new CRM_Financial_DAO_FinancialAccount();
     $financialAccount->copyValues($params);
